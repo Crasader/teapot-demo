@@ -97,10 +97,16 @@ BoundingBox Mesh::GetBoundingBox() {
 Mesh* Mesh::CreateMeshFromFile(std::string filename, int drawStyle) {
 	
 	// Holds desired contents from file
-	std::string content;
+	std::string line;
 
 	// Stores object file data
 	std::ifstream file(filename);
+
+	// Whether we've checked match conditions in final part of loop
+	bool hasCheckedMatchRequirements = false;
+	bool hasTexture = false;
+	bool hasNormal = false;
+	int requiredMatches = 3; // There must be at least 3 vertices per mesh triangle
 
 	if (!file.is_open()) {
 		Debug::Log("Mesh object file did not load properly.");
@@ -126,33 +132,49 @@ Mesh* Mesh::CreateMeshFromFile(std::string filename, int drawStyle) {
 	std::vector<Vertex> vertices;
 
 	// Check all lines for relevant information
-	while (std::getline(file, content)) {
+	while (std::getline(file, line)) {
 
 		// Read vertex coordinate data, set color to default (magenta)
-		if (content[0] == 'v' && content[1] == ' ') {
+		if (line[0] == 'v' && line[1] == ' ') {
 			PositionCoordinates position;
-			sscanf_s(content.c_str(), "v %f %f %f\n", &position.x, &position.y, &position.z);
+			sscanf_s(line.c_str(), "v %f %f %f\n", &position.x, &position.y,
+				&position.z);
 			posCoord.push_back(position);
 		}
 
 		// Read texture coordinate data
-		if (content[0] == 'v' && content[1] == 't') {
+		if (line[0] == 'v' && line[1] == 't') {
 			TextureCoordinates texture;
-			sscanf_s(content.c_str(), "vt %f %f\n", &texture.start, &texture.end);
+			sscanf_s(line.c_str(), "vt %f %f\n", &texture.start, &texture.end);
 			textCoord.push_back(texture);
 		}
 
 		// Read normal coordinate data
-		if (content[0] == 'v' && content[1] == 'n') {
+		if (line[0] == 'v' && line[1] == 'n') {
 			PositionCoordinates position;
-			sscanf_s(content.c_str(), "vn %f %f %f\n", &position.x, &position.y, &position.z);
+			sscanf_s(line.c_str(), "vn %f %f %f\n", &position.x, &position.y,
+				&position.z);
 			normCoord.push_back(position);
-		}
+		}		
 
 		// Read index data for triangle vertices
 		// Each set of 3 numbers indexes that vertex index to use, texture index to use, and normal index to use
 		// NOTE: Index starts at 1 NOT 0.
-		if (content[0] == 'f' && content[1] == ' ') {
+		if (line[0] == 'f' && line[1] == ' ') {
+
+			if (!hasCheckedMatchRequirements) {
+
+				if (textCoord.size() > 0) {
+					hasTexture = true;
+					requiredMatches += 3;
+				}
+				if (normCoord.size() > 0) {
+					hasNormal = true;
+					requiredMatches += 3;
+				}
+				hasCheckedMatchRequirements = true;
+			}
+
 			int vertexIndex1;
 			int textureIndex1;
 			int normalIndex1;
@@ -162,51 +184,105 @@ Mesh* Mesh::CreateMeshFromFile(std::string filename, int drawStyle) {
 			int vertexIndex3;
 			int textureIndex3;
 			int normalIndex3;
+			int matches = 0;
 
-			// Store index for Vertex triangle
-			int matches = sscanf_s(content.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-				&vertexIndex1, &textureIndex1, &normalIndex1,
-				&vertexIndex2, &textureIndex2, &normalIndex2,
-				&vertexIndex3, &textureIndex3, &normalIndex3);
+			if (hasTexture && hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+					&vertexIndex1, &textureIndex1, &normalIndex1,
+					&vertexIndex2, &textureIndex2, &normalIndex2,
+					&vertexIndex3, &textureIndex3, &normalIndex3);
+			}
 
-			// Make sure the appropriate exists
-			if (matches != 9) {
+			if (hasTexture && !hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d/%d/ %d/%d/ %d/%d/\n",
+					&vertexIndex1, &textureIndex1,
+					&vertexIndex2, &textureIndex2,
+					&vertexIndex3, &textureIndex3);
+			}
+
+			if (!hasTexture && hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d//%d %d//%d %d//%d\n",
+					&vertexIndex1, &normalIndex1,
+					&vertexIndex2, &normalIndex2,
+					&vertexIndex3, &normalIndex3);
+			}
+
+			if (!hasTexture && !hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d// %d// %d//\n",
+					&vertexIndex1,&vertexIndex2,&vertexIndex3);
+			}
+
+			// Make sure the appropriate data exists
+			if (matches != requiredMatches) {
 				Debug::Log("The 3D object file was not in an acceptable format.");
 				std::terminate();
 			}
 
-			vertices.push_back(Vertex(
-				posCoord[vertexIndex1 - 1].x, 
-				posCoord[vertexIndex1 - 1].y, 
-				posCoord[vertexIndex1 - 1].z,
-				1.0f, 0.0f, 1.0f, 1.0f, 
-				textCoord[textureIndex1 - 1].start,
-				textCoord[textureIndex1 - 1].end,
-				normCoord[normalIndex1 - 1].x,
-				normCoord[normalIndex1 - 1].y,
-				normCoord[normalIndex1 - 1].z));
+			PositionCoordinates pos1 = posCoord[vertexIndex1 - 1];
+			PositionCoordinates pos2 = posCoord[vertexIndex2 - 1];;
+			PositionCoordinates pos3 = posCoord[vertexIndex3 - 1];
+
+			TextureCoordinates text1;
+			TextureCoordinates text2;
+			TextureCoordinates text3;
+
+			PositionCoordinates norm1;
+			PositionCoordinates norm2;
+			PositionCoordinates norm3;
+
+			if (hasTexture) {
+				text1 = textCoord[textureIndex1 - 1];
+				text2 = textCoord[textureIndex2 - 1];
+				text3 = textCoord[textureIndex3 - 1];
+			} else {
+				text1.start = 0.0f;
+				text1.end = 0.0f;
+				text2.start = 0.0f;
+				text2.end = 0.0f;
+				text3.start = 0.0f;
+				text3.end = 0.0f;
+			}
+
+			if (hasNormal) {
+				norm1 = normCoord[normalIndex1 - 1];
+				norm2 = normCoord[normalIndex2 - 1];
+				norm3 = normCoord[normalIndex3 - 1];
+			} else {
+
+				norm1.x = 0.0f;
+				norm1.y = 1.0f;
+				norm1.z = 0.0f;
+
+				norm2.x = 0.0f;
+				norm2.y = 1.0f;
+				norm2.z = 0.0f;
+
+				norm3.x = 0.0f;
+				norm3.y = 1.0f;
+				norm3.z = 0.0f;
+			}
 
 			vertices.push_back(Vertex(
-				posCoord[vertexIndex2 - 1].x,
-				posCoord[vertexIndex2 - 1].y,
-				posCoord[vertexIndex2 - 1].z,
+				pos1.x, pos1.y, pos1.z,
 				1.0f, 0.0f, 1.0f, 1.0f,
-				textCoord[textureIndex2 - 1].start,
-				textCoord[textureIndex2 - 1].end,
-				normCoord[normalIndex2 - 1].x,
-				normCoord[normalIndex2 - 1].y,
-				normCoord[normalIndex2 - 1].z));
+				text1.start, text1.end,
+				norm1.x, norm1.y, norm1.z));
 
 			vertices.push_back(Vertex(
-				posCoord[vertexIndex3 - 1].x,
-				posCoord[vertexIndex3 - 1].y,
-				posCoord[vertexIndex3 - 1].z,
+				pos2.x, pos2.y, pos2.z,
 				1.0f, 0.0f, 1.0f, 1.0f,
-				textCoord[textureIndex3 - 1].start,
-				textCoord[textureIndex3 - 1].end,
-				normCoord[normalIndex3 - 1].x,
-				normCoord[normalIndex3 - 1].y,
-				normCoord[normalIndex3 - 1].z));
+				text2.start, text2.end,
+				norm2.x, norm2.y, norm2.z));
+
+			vertices.push_back(Vertex(
+				pos3.x, pos3.y, pos3.z,
+				1.0f, 0.0f, 1.0f, 1.0f,
+				text3.start, text3.end,
+				norm3.x, norm3.y, norm3.z));
 		}
 	}
 
@@ -220,10 +296,16 @@ std::vector<Mesh*> Mesh::CreateMeshArrayFromFile(std::string filename, int drawS
 	std::vector<Mesh*> meshes;
 
 	// Holds desired contents from file
-	std::string content;
+	std::string line;
 
 	// Stores object file data
 	std::ifstream file(filename);
+
+	// Whether we've checked match conditions in final part of loop
+	bool hasCheckedMatchRequirements = false;
+	bool hasTexture = false;
+	bool hasNormal = false;
+	int requiredMatches = 3; // There must be at least 3 vertices per mesh triangle
 
 	if (!file.is_open()) {
 		Debug::Log("Mesh object file did not load properly.");
@@ -248,33 +330,47 @@ std::vector<Mesh*> Mesh::CreateMeshArrayFromFile(std::string filename, int drawS
 	std::vector<Vertex> vertices;
 
 	// Check all lines for relevant information
-	while (std::getline(file, content)) {
+	while (std::getline(file, line)) {
 
 		// Read vertex coordinate data, set color to default (magenta)
-		if (content[0] == 'v' && content[1] == ' ') {
+		if (line[0] == 'v' && line[1] == ' ') {
 			PositionCoordinates position;
-			sscanf_s(content.c_str(), "v %f %f %f\n", &position.x, &position.y, &position.z);
+			sscanf_s(line.c_str(), "v %f %f %f\n", &position.x, &position.y, &position.z);
 			posCoord.push_back(position);
 		}
 
 		// Read texture coordinate data
-		if (content[0] == 'v' && content[1] == 't') {
+		if (line[0] == 'v' && line[1] == 't') {
 			TextureCoordinates texture;
-			sscanf_s(content.c_str(), "vt %f %f\n", &texture.start, &texture.end);
+			sscanf_s(line.c_str(), "vt %f %f\n", &texture.start, &texture.end);
 			textCoord.push_back(texture);
 		}
 
 		// Read normal coordinate data
-		if (content[0] == 'v' && content[1] == 'n') {
+		if (line[0] == 'v' && line[1] == 'n') {
 			PositionCoordinates position;
-			sscanf_s(content.c_str(), "vn %f %f %f\n", &position.x, &position.y, &position.z);
+			sscanf_s(line.c_str(), "vn %f %f %f\n", &position.x, &position.y, &position.z);
 			normCoord.push_back(position);
 		}
 
 		// Read index data for triangle vertices
 		// Each set of 3 numbers indexes that vertex index to use, texture index to use, and normal index to use
 		// NOTE: Index starts at 1 NOT 0.
-		if (content[0] == 'f' && content[1] == ' ') {
+		if (line[0] == 'f' && line[1] == ' ') {
+			
+			if (!hasCheckedMatchRequirements) {
+
+				if (textCoord.size() > 0) {
+					hasTexture = true;
+					requiredMatches += 3;
+				}
+				if (normCoord.size() > 0) {
+					hasNormal = true;
+					requiredMatches += 3;
+				}
+				hasCheckedMatchRequirements = true;
+			}
+
 			int vertexIndex1;
 			int textureIndex1;
 			int normalIndex1;
@@ -284,51 +380,105 @@ std::vector<Mesh*> Mesh::CreateMeshArrayFromFile(std::string filename, int drawS
 			int vertexIndex3;
 			int textureIndex3;
 			int normalIndex3;
+			int matches = 0;
 
-			// Store index for Vertex triangle
-			int matches = sscanf_s(content.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-				&vertexIndex1, &textureIndex1, &normalIndex1,
-				&vertexIndex2, &textureIndex2, &normalIndex2,
-				&vertexIndex3, &textureIndex3, &normalIndex3);
+			if (hasTexture && hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+					&vertexIndex1, &textureIndex1, &normalIndex1,
+					&vertexIndex2, &textureIndex2, &normalIndex2,
+					&vertexIndex3, &textureIndex3, &normalIndex3);
+			}
 
-			// Make sure the appropriate exists
-			if (matches != 9) {
+			if (hasTexture && !hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d/%d/ %d/%d/ %d/%d/\n",
+					&vertexIndex1, &textureIndex1,
+					&vertexIndex2, &textureIndex2,
+					&vertexIndex3, &textureIndex3);
+			}
+
+			if (!hasTexture && hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d//%d %d//%d %d//%d\n",
+					&vertexIndex1, &normalIndex1,
+					&vertexIndex2, &normalIndex2,
+					&vertexIndex3, &normalIndex3);
+			}
+
+			if (!hasTexture && !hasNormal) {
+				// Store index for Vertex triangle
+				matches = sscanf_s(line.c_str(), "f %d// %d// %d//\n",
+					&vertexIndex1, &vertexIndex2, &vertexIndex3);
+			}
+
+			// Make sure the appropriate data exists
+			if (matches != requiredMatches) {
 				Debug::Log("The 3D object file was not in an acceptable format.");
 				std::terminate();
 			}
 
-			vertices.push_back(Vertex(
-				posCoord[vertexIndex1 - 1].x,
-				posCoord[vertexIndex1 - 1].y,
-				posCoord[vertexIndex1 - 1].z,
-				1.0f, 0.0f, 1.0f, 1.0f,
-				textCoord[textureIndex1 - 1].start,
-				textCoord[textureIndex1 - 1].end,
-				normCoord[normalIndex1 - 1].x,
-				normCoord[normalIndex1 - 1].y,
-				normCoord[normalIndex1 - 1].z));
+			PositionCoordinates pos1 = posCoord[vertexIndex1 - 1];
+			PositionCoordinates pos2 = posCoord[vertexIndex2 - 1];;
+			PositionCoordinates pos3 = posCoord[vertexIndex3 - 1];
+
+			TextureCoordinates text1;
+			TextureCoordinates text2;
+			TextureCoordinates text3;
+
+			PositionCoordinates norm1;
+			PositionCoordinates norm2;
+			PositionCoordinates norm3;
+
+			if (hasTexture) {
+				text1 = textCoord[textureIndex1 - 1];
+				text2 = textCoord[textureIndex2 - 1];
+				text3 = textCoord[textureIndex3 - 1];
+			} else {
+				text1.start = 0.0f;
+				text1.end = 0.0f;
+				text2.start = 0.0f;
+				text2.end = 0.0f;
+				text3.start = 0.0f;
+				text3.end = 0.0f;
+			}
+
+			if (hasNormal) {
+				norm1 = normCoord[normalIndex1 - 1];
+				norm2 = normCoord[normalIndex2 - 1];
+				norm3 = normCoord[normalIndex3 - 1];
+			} else {
+
+				norm1.x = 0.0f;
+				norm1.y = 1.0f;
+				norm1.z = 0.0f;
+
+				norm2.x = 0.0f;
+				norm2.y = 1.0f;
+				norm2.z = 0.0f;
+
+				norm3.x = 0.0f;
+				norm3.y = 1.0f;
+				norm3.z = 0.0f;
+			}
 
 			vertices.push_back(Vertex(
-				posCoord[vertexIndex2 - 1].x,
-				posCoord[vertexIndex2 - 1].y,
-				posCoord[vertexIndex2 - 1].z,
+				pos1.x, pos1.y, pos1.z,
 				1.0f, 0.0f, 1.0f, 1.0f,
-				textCoord[textureIndex2 - 1].start,
-				textCoord[textureIndex2 - 1].end,
-				normCoord[normalIndex2 - 1].x,
-				normCoord[normalIndex2 - 1].y,
-				normCoord[normalIndex2 - 1].z));
+				text1.start, text1.end,
+				norm1.x, norm1.y, norm1.z));
 
 			vertices.push_back(Vertex(
-				posCoord[vertexIndex3 - 1].x,
-				posCoord[vertexIndex3 - 1].y,
-				posCoord[vertexIndex3 - 1].z,
+				pos2.x, pos2.y, pos2.z,
 				1.0f, 0.0f, 1.0f, 1.0f,
-				textCoord[textureIndex3 - 1].start,
-				textCoord[textureIndex3 - 1].end,
-				normCoord[normalIndex3 - 1].x,
-				normCoord[normalIndex3 - 1].y,
-				normCoord[normalIndex3 - 1].z));
+				text2.start, text2.end,
+				norm2.x, norm2.y, norm2.z));
+
+			vertices.push_back(Vertex(
+				pos3.x, pos3.y, pos3.z,
+				1.0f, 0.0f, 1.0f, 1.0f,
+				text3.start, text3.end,
+				norm3.x, norm3.y, norm3.z));
 
 			int vertexCount = vertices.size();
 			meshes.push_back(new Mesh(std::vector<Vertex>{vertices[vertexCount - 3], vertices[vertexCount - 2], vertices[vertexCount - 1]}, drawStyle));

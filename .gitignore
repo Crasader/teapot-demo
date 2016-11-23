@@ -3,6 +3,8 @@
 !shaders**
 !textures**
 !models**
+!main.cpp
+!pch.h
 
 # Windows image file caches
 Thumbs.db
