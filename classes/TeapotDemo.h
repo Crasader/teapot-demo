@@ -32,20 +32,19 @@ public:
 	void Clean();
 
 	GLContext* glContext = nullptr;
-
-	Shader shader;
-
 	Mesh* platform = nullptr;
-	
-	// Scene assets
-	Camera camera;
+	Mesh* teapotSource = nullptr;
 	Light* light = nullptr;
-	Mesh* teapotSource;
+	
 	std::vector<Mesh*> tempSlices;
 	std::vector<Mesh*> teapotSlices;
 	std::vector<Mesh*> teapot25Middle;
 	std::vector<Mesh*> teapot25Left;
 	std::vector<Mesh*> teapot25Right;
+
+	Shader shader;
+	Camera camera;
+	
 	float groundLevel;
 
 	// Use original teapot origin as reference for center
@@ -56,8 +55,8 @@ public:
 
 	Timer timer;
 
-	float gravityEffect;
-	float gravityIncrease;
+	float gravityEffect = 0.0002f;;
+	float gravityIncrease = 0.00015f;;
 
 	bool renderSlices = false;
 	bool renderMiddle = false;

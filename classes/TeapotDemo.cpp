@@ -66,8 +66,8 @@ void TeapotDemo::ExplodeTeapot(std::vector<Mesh*> teapot, float dt) {
 				State::groupsOfParticles);
 			teapot[iii]->transform.RotateYZ(
 				(rotationFactor * 500.0f) *
-				force * yzDirection * (rand() % 10) / State::
-				groupsOfParticles);
+				force * yzDirection * (rand() % 10) / 
+				State::groupsOfParticles);
 		}
 		teapot[iii]->transform.Translate(trajectory.x, trajectory.y, trajectory.z);
 		Renderer::Draw(teapot[iii], GL_TRIANGLES, &shader, light);
@@ -359,8 +359,6 @@ void TeapotDemo::RunDemo() {
 				Renderer::Draw(teapot25Right[iii], GL_TRIANGLES, &shader, light);
 			}
 		}
-
-		// CHANGE SLOW MO EFFECT, GROUPS OF PARTICLES, COLOR, RADIAL, HERE
 	}
 }
 
@@ -469,14 +467,6 @@ void TeapotDemo::InitDemo() {
 	originY = teapotSource->GetCenter().y;
 	originZ = teapotSource->GetCenter().z;
 	origin = glm::vec3(originX, originY, originZ);
-
-	gravityEffect = 0.0002f;
-	gravityIncrease = 0.00015f;
-
-	renderSlices = false;
-	renderMiddle = false;
-	renderLeft = false;
-	renderRight = false;
 
 	timer.Update();
 }
