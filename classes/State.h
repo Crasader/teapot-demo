@@ -9,12 +9,13 @@ public:
 	static STATE state;
 
 	// How many pieces to explode teapot into
+	static int numberOfTeapots;
 	static int groupsOfParticles;
 	static bool radial;
 	static float slowMotionFactor;
 	static bool closeUp;
-	static float normalSpeed;
-	static float slowSpeed;
-	static float slowerSpeed;
+	static bool normalSpeed;
+	static bool slowSpeed;
+	static bool slowerSpeed;
 };
 

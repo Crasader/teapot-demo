@@ -50,3 +50,4 @@
 #include "Shader.h"
 #include "FileManager.h"
 #include "State.h"
+#include "TeapotDemo.h"
