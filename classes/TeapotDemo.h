@@ -25,6 +25,12 @@ public:
 
 	void TurnTeapotsOff();
 
+	// Turn left teapot on for rendering
+	void TurnLeftTeapotOff();
+
+	// Turn left teapot on for rendering
+	void TurnRightTeapotOff();
+
 	void InitDemo();
 
 	void RunDemo();

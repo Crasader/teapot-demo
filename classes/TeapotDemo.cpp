@@ -208,9 +208,6 @@ void TeapotDemo::TurnMiddleTeapotOn() {
 }
 
 void TeapotDemo::TurnSlicedTeapotOn() {
-	for (int iii = 0; iii < teapot25Middle.size(); iii++) {
-		teapotSlices[iii]->transform = teapotSource->transform;
-	}
 	renderSlices = true;
 }
 
@@ -219,6 +216,16 @@ void TeapotDemo::TurnTeapotsOff() {
 	renderRight = false;
 	renderMiddle = false;
 	renderSlices = false;
+}
+
+// Turn left teapot on for rendering
+void TeapotDemo::TurnLeftTeapotOff() {
+	renderLeft = false;
+}
+
+// Turn left teapot on for rendering
+void TeapotDemo::TurnRightTeapotOff() {
+	renderRight = false;
 }
 
 void TeapotDemo::RunDemo() {
@@ -452,7 +459,7 @@ void TeapotDemo::InitDemo() {
 	light->SetAmbientStrength(0.00f);
 	light->transform.Translate(1.5f, 5.0f, 0.5f);
 
-	teapotSource = Mesh::CreateMeshFromFile("..\\models\\teapot-scaled.obj", GL_STATIC_DRAW);
+	teapotSource = Mesh::CreateMeshFromFile("..\\models\\polygon.obj", GL_STATIC_DRAW);
 	SubdivideTeapot(teapotSource, 25, tempSlices, teapot25Middle);
 	SubdivideTeapot(teapotSource, 25, tempSlices, teapot25Left);
 	SubdivideTeapot(teapotSource, 25, tempSlices, teapot25Right);
